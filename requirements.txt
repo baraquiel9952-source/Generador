@@ -1,4 +1,5 @@
 flask
+flask-cors
 fpdf2
 qrcode[pil]
 Pillow
