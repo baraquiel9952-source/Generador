@@ -1,10 +1,12 @@
 import io
 import os
 from flask import Flask, request, jsonify, send_file
+from flask_cors import CORS
 from main import generar_datos_completos
 from plantilla import generar_pdf_constancia
 
 app = Flask(__name__)
+CORS(app)
 
 # ============================================================
 # RUTA PRINCIPAL - INFORMACIÓN
@@ -44,7 +46,6 @@ def api_generar():
     try:
         data = request.get_json()
 
-        # Validaciones
         if not data:
             return jsonify({'error': 'Cuerpo JSON requerido'}), 400
 
@@ -66,7 +67,6 @@ def api_generar():
         if errores:
             return jsonify({'error': 'Datos inválidos', 'detalles': errores}), 400
 
-        # Generar datos
         datos = generar_datos_completos(nombre, fecha, estado, sexo)
 
         return jsonify({
@@ -107,7 +107,6 @@ def api_generar_pdf():
         if errores:
             return jsonify({'error': 'Datos inválidos', 'detalles': errores}), 400
 
-        # Generar datos y PDF
         datos = generar_datos_completos(nombre, fecha, estado, sexo)
         pdf_bytes = generar_pdf_constancia(datos)
 
@@ -152,7 +151,6 @@ def api_generar_completo():
         if errores:
             return jsonify({'error': 'Datos inválidos', 'detalles': errores}), 400
 
-        # Generar
         datos = generar_datos_completos(nombre, fecha, estado, sexo)
         pdf_bytes = generar_pdf_constancia(datos)
         pdf_base64 = base64.b64encode(pdf_bytes).decode('utf-8')
