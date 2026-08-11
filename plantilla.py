@@ -5,57 +5,69 @@ import qrcode
 
 
 class ConstanciaFiscalPDF(FPDF):
+    """
+    Plantilla idéntica a la Constancia de Situación Fiscal del SAT.
+    Coordenadas basadas en análisis de PDF real.
+    Tamaño: Carta (210 x 297 mm)
+    """
+
     def __init__(self, datos):
         super().__init__('P', 'mm', 'Letter')
         self.datos = datos
-        self.set_auto_page_break(auto=True, margin=15)
-
-    def header(self):
-        pass
-
-    def footer(self):
-        pass
+        self.set_auto_page_break(auto=False, margin=0)
 
     def construir(self):
         self.add_page()
 
-        MARGEN_IZQ = 25
-        ANCHO_TEXTO = 160
-        self.set_left_margin(MARGEN_IZQ)
+        MARGEN_IZQ = 20
+        ANCHO_TEXTO = 170
 
-        # TÍTULO
-        self.set_y(18)
-        self.set_font('Helvetica', 'B', 18)
-        self.cell(ANCHO_TEXTO, 8, 'CONSTANCIA DE SITUACION FISCAL', align='C', new_x="LMARGIN", new_y="NEXT")
-        self.ln(2)
+        # ============================================================
+        # 1. TÍTULO PRINCIPAL
+        # ============================================================
+        self.set_font('Helvetica', 'B', 20)
+        self.set_xy(MARGEN_IZQ, 18)
+        self.cell(ANCHO_TEXTO, 9, 'CONSTANCIA DE SITUACION FISCAL', align='C')
 
-        # SUBTÍTULO
-        self.set_font('Helvetica', '', 10)
-        self.cell(ANCHO_TEXTO, 5, 'Registro Federal de Contribuyentes', align='C', new_x="LMARGIN", new_y="NEXT")
-        self.ln(3)
+        # ============================================================
+        # 2. SUBTÍTULO
+        # ============================================================
+        self.set_font('Helvetica', '', 11)
+        self.set_xy(MARGEN_IZQ, 30)
+        self.cell(ANCHO_TEXTO, 6, 'Registro Federal de Contribuyentes', align='C')
 
-        # RFC GRANDE
+        # ============================================================
+        # 3. RFC GRANDE (ESPACIADO)
+        # ============================================================
         self.set_font('Helvetica', 'B', 26)
         rfc_espaciado = '  '.join(list(self.datos['rfc']))
-        self.cell(ANCHO_TEXTO, 10, rfc_espaciado, align='C', new_x="LMARGIN", new_y="NEXT")
-        self.ln(3)
+        self.set_xy(MARGEN_IZQ, 39)
+        self.cell(ANCHO_TEXTO, 12, rfc_espaciado, align='C')
 
-        # NOMBRE
-        self.set_font('Helvetica', '', 10)
-        self.cell(ANCHO_TEXTO, 5, self.datos['nombre'], align='C', new_x="LMARGIN", new_y="NEXT")
-        self.ln(1)
+        # ============================================================
+        # 4. NOMBRE COMPLETO
+        # ============================================================
+        self.set_font('Helvetica', '', 11)
+        self.set_xy(MARGEN_IZQ, 52)
+        self.cell(ANCHO_TEXTO, 6, self.datos['nombre'], align='C')
 
-        # IDCIF
-        self.set_font('Helvetica', '', 8)
-        self.cell(ANCHO_TEXTO, 4, f"idCIF: {self.datos['idcif']}", align='C', new_x="LMARGIN", new_y="NEXT")
-        self.ln(2)
-
-        # LEYENDA
+        # ============================================================
+        # 5. IDCIF
+        # ============================================================
         self.set_font('Helvetica', '', 9)
-        self.cell(ANCHO_TEXTO, 4, 'VALIDA TU INFORMACION FISCAL', align='C', new_x="LMARGIN", new_y="NEXT")
-        self.ln(2)
+        self.set_xy(MARGEN_IZQ, 60)
+        self.cell(ANCHO_TEXTO, 5, f"idCIF: {self.datos['idcif']}", align='C')
 
-        # LUGAR Y FECHA
+        # ============================================================
+        # 6. LEYENDA DE VALIDACIÓN
+        # ============================================================
+        self.set_font('Helvetica', '', 10)
+        self.set_xy(MARGEN_IZQ, 67)
+        self.cell(ANCHO_TEXTO, 5, 'VALIDA TU INFORMACION FISCAL', align='C')
+
+        # ============================================================
+        # 7. LUGAR Y FECHA DE EMISIÓN
+        # ============================================================
         lugar = self.datos['domicilio'].get('estado', 'CIUDAD DE MEXICO').upper()
         fecha_emision = datetime.now().strftime('%d DE %B DE %Y').upper()
         meses = {
@@ -67,162 +79,180 @@ class ConstanciaFiscalPDF(FPDF):
         for en, es in meses.items():
             fecha_emision = fecha_emision.replace(en, es)
 
-        self.set_font('Helvetica', '', 9)
-        self.cell(ANCHO_TEXTO, 4, f"{lugar}, A {fecha_emision}", align='C', new_x="LMARGIN", new_y="NEXT")
-        self.ln(4)
+        self.set_font('Helvetica', '', 10)
+        self.set_xy(MARGEN_IZQ, 75)
+        self.cell(ANCHO_TEXTO, 5, f"{lugar}, A {fecha_emision}", align='C')
 
-        # SEPARADOR
-        self.line(MARGEN_IZQ, self.get_y(), MARGEN_IZQ + ANCHO_TEXTO, self.get_y())
-        self.ln(4)
+        # ============================================================
+        # 8. SECCIÓN: DATOS DE IDENTIFICACIÓN DEL CONTRIBUYENTE
+        # ============================================================
+        self.set_font('Helvetica', 'B', 11)
+        self.set_xy(MARGEN_IZQ, 87)
+        self.cell(ANCHO_TEXTO, 5, 'Datos de Identificacion del Contribuyente:')
 
-        # DATOS DE IDENTIFICACIÓN
-        self.set_font('Helvetica', 'B', 10)
-        self.cell(ANCHO_TEXTO, 5, 'Datos de Identificacion del Contribuyente:', new_x="LMARGIN", new_y="NEXT")
-        self.ln(3)
-
-        self.set_font('Helvetica', '', 9)
-        datos_id = [
-            f"RFC: {self.datos['rfc']}",
-            f"CURP: {self.datos['curp']}",
-            f"Nombre o Razon Social: {self.datos['nombre']}",
-            "",
-            f"Fecha de Inicio de Operaciones: 18 de octubre de 2016",
-            f"Estatus en el padron: ACTIVO",
-            f"Fecha de ultimo cambio de estado: 18 de octubre de 2016",
-            f"Nombre Comercial: ",
+        campos_id = [
+            ('RFC:', self.datos['rfc'], 94),
+            ('CURP:', self.datos['curp'], 99),
+            ('Nombre (s):', self.datos.get('nombres', ''), 104),
+            ('Primer Apellido:', self.datos.get('primer_apellido', ''), 109),
+            ('Segundo Apellido:', self.datos.get('segundo_apellido', ''), 114),
+            ('Fecha inicio de operaciones:', '18 DE OCTUBRE DE 2016', 119),
+            ('Estatus en el padron:', 'ACTIVO', 124),
+            ('Fecha de ultimo cambio de estado:', '18 DE OCTUBRE DE 2016', 129),
+            ('Nombre Comercial:', self.datos['nombre'], 134),
         ]
-        for linea in datos_id:
-            if linea:
-                self.cell(ANCHO_TEXTO, 4, linea, new_x="LMARGIN", new_y="NEXT")
-            else:
-                self.ln(2)
-        self.ln(4)
 
-        # DOMICILIO
-        self.set_font('Helvetica', 'B', 10)
-        self.cell(ANCHO_TEXTO, 5, 'Datos del domicilio registrado:', new_x="LMARGIN", new_y="NEXT")
-        self.ln(3)
+        for etiqueta, valor, y in campos_id:
+            self.set_font('Helvetica', 'B', 9)
+            self.set_xy(MARGEN_IZQ, y)
+            self.cell(45, 4, etiqueta)
+            self.set_font('Helvetica', '', 9)
+            self.set_xy(MARGEN_IZQ + 45, y)
+            self.cell(125, 4, str(valor))
 
-        self.set_font('Helvetica', '', 9)
+        # ============================================================
+        # 9. SECCIÓN: DATOS DEL DOMICILIO REGISTRADO
+        # ============================================================
+        self.set_font('Helvetica', 'B', 11)
+        self.set_xy(MARGEN_IZQ, 143)
+        self.cell(ANCHO_TEXTO, 5, 'Datos del domicilio registrado:')
+
         dom = self.datos['domicilio']
-        datos_dom = [
-            f"Codigo Postal: {dom['codigo_postal']}",
-            f"Vialidad: {dom['calle'].upper()}",
-            f"Numero Exterior: {dom['numero_exterior']}",
-            f"Numero Interior: {dom['numero_interior'] if dom['numero_interior'] else ''}",
-            f"Colonia: {dom['colonia'].upper()}",
-            f"Localidad: {dom.get('localidad', '')}",
-            f"Municipio o Alcaldia: {dom.get('municipio', '')}",
-            f"Entidad Federativa: {dom['estado'].upper()}",
-            f"Y Calle: ",
-            f"O Calle: ",
+        campos_dom = [
+            ('Codigo Postal:', dom['codigo_postal'], 150),
+            ('Tipo de Vialidad:', 'CALLE', 155),
+            ('Nombre de Vialidad:', dom['calle'].upper(), 160),
+            ('Numero Exterior:', dom['numero_exterior'], 165),
+            ('Numero Interior:', dom.get('numero_interior', ''), 170),
+            ('Nombre de la Colonia:', dom['colonia'].upper(), 175),
+            ('Nombre de la Localidad:', dom.get('localidad', dom.get('municipio', '')), 180),
+            ('Nombre del Municipio o Demarcacion Territorial:', dom.get('municipio', ''), 185),
+            ('Nombre de la Entidad Federativa:', dom['estado'].upper(), 190),
+            ('Entre Calle:', '', 195),
+            ('Y Calle:', '', 200),
         ]
-        for linea in datos_dom:
-            self.cell(ANCHO_TEXTO, 4, linea, new_x="LMARGIN", new_y="NEXT")
-        self.ln(4)
 
-        # ACTIVIDADES ECONÓMICAS
-        self.set_font('Helvetica', 'B', 10)
-        self.cell(ANCHO_TEXTO, 5, 'Actividades Economicas:', new_x="LMARGIN", new_y="NEXT")
-        self.ln(3)
+        for etiqueta, valor, y in campos_dom:
+            self.set_font('Helvetica', 'B', 9)
+            self.set_xy(MARGEN_IZQ, y)
+            ancho_etiqueta = 60 if 'Municipio' in etiqueta or 'Demarcacion' in etiqueta else 40
+            self.cell(ancho_etiqueta, 4, etiqueta)
+            self.set_font('Helvetica', '', 9)
+            self.set_xy(MARGEN_IZQ + ancho_etiqueta, y)
+            self.cell(ANCHO_TEXTO - ancho_etiqueta, 4, str(valor))
 
-        self.set_font('Helvetica', '', 8)
-        col_anchos = [10, 100, 20, 20, 20]
-        cabeceras = ['Ord.', 'Actividad Economica', 'Porcentaje', 'Fecha Inicio', 'Fecha Fin']
-        for i, cab in enumerate(cabeceras):
-            self.cell(col_anchos[i], 4, cab, border=0)
-        self.ln(5)
+        # ============================================================
+        # 10. ACTIVIDADES ECONÓMICAS
+        # ============================================================
+        self.set_font('Helvetica', 'B', 11)
+        self.set_xy(MARGEN_IZQ, 210)
+        self.cell(ANCHO_TEXTO, 5, 'Actividades Economicas:')
 
-        self.set_font('Helvetica', '', 8)
-        self.cell(col_anchos[0], 4, '1')
-        self.cell(col_anchos[1], 4, '')
-        self.cell(col_anchos[2], 4, '100%')
-        self.cell(col_anchos[3], 4, '18/10/2016')
-        self.cell(col_anchos[4], 4, '')
-        self.ln(6)
+        col_act = [15, 60, 20, 30, 30]
+        cabeceras_act = ['Orden', 'Actividad Economica', 'Porcentaje', 'Fecha Inicio', 'Fecha Fin']
+        x_act = [MARGEN_IZQ, MARGEN_IZQ + 15, MARGEN_IZQ + 75, MARGEN_IZQ + 95, MARGEN_IZQ + 125]
 
-        # REGÍMENES
-        self.set_font('Helvetica', 'B', 10)
-        self.cell(ANCHO_TEXTO, 5, 'Regimenes:', new_x="LMARGIN", new_y="NEXT")
-        self.ln(3)
+        self.set_font('Helvetica', 'B', 9)
+        for cab, x, w in zip(cabeceras_act, x_act, col_act):
+            self.set_xy(x, 217)
+            self.cell(w, 4, cab)
 
-        self.set_font('Helvetica', '', 8)
-        col_anchos_reg = [130, 25, 25]
+        self.set_font('Helvetica', '', 9)
+        self.set_xy(x_act[0], 222)
+        self.cell(col_act[0], 4, '1')
+        self.set_xy(x_act[1], 222)
+        self.cell(col_act[1], 4, '')
+        self.set_xy(x_act[2], 222)
+        self.cell(col_act[2], 4, '100')
+        self.set_xy(x_act[3], 222)
+        self.cell(col_act[3], 4, '18/10/2016')
+        self.set_xy(x_act[4], 222)
+        self.cell(col_act[4], 4, '')
+
+        # ============================================================
+        # 11. REGÍMENES
+        # ============================================================
+        self.set_font('Helvetica', 'B', 11)
+        self.set_xy(MARGEN_IZQ, 235)
+        self.cell(ANCHO_TEXTO, 5, 'Regimenes:')
+
+        col_reg = [60, 30, 30]
         cabeceras_reg = ['Regimen', 'Fecha Inicio', 'Fecha Fin']
-        for i, cab in enumerate(cabeceras_reg):
-            self.cell(col_anchos_reg[i], 4, cab, border=0)
-        self.ln(5)
+        x_reg = [MARGEN_IZQ, MARGEN_IZQ + 60, MARGEN_IZQ + 90]
 
-        self.set_font('Helvetica', '', 8)
-        self.cell(col_anchos_reg[0], 4, self.datos['regimen_fiscal'])
-        self.cell(col_anchos_reg[1], 4, '18/10/2016')
-        self.cell(col_anchos_reg[2], 4, '')
-        self.ln(6)
+        self.set_font('Helvetica', 'B', 9)
+        for cab, x, w in zip(cabeceras_reg, x_reg, col_reg):
+            self.set_xy(x, 242)
+            self.cell(w, 4, cab)
 
-        # PIE LEGAL
-        self.set_y(210)
-        self.set_font('Helvetica', '', 7)
-        texto_legal = (
-            "En atencion a lo dispuesto en los articulos 3, 16, 17, 18, 31 y demas relativos de la Ley General de "
-            "Proteccion de Datos Personales en Posesion de Sujetos Obligados, se informa que los datos personales "
-            "recabados seran protegidos, incorporados y tratados en el sistema de datos personales denominado "
-            "Registro Federal de Contribuyentes..."
+        self.set_font('Helvetica', '', 9)
+        # Fila 1: nombre corto
+        self.set_xy(x_reg[0], 247)
+        self.cell(col_reg[0], 4, 'Asalariado')
+        self.set_xy(x_reg[1], 247)
+        self.cell(col_reg[1], 4, '18/10/2016')
+        self.set_xy(x_reg[2], 247)
+        self.cell(col_reg[2], 4, '18/10/2016')
+        # Fila 2: nombre largo del régimen
+        self.set_xy(x_reg[0], 252)
+        self.cell(col_reg[0], 4, self.datos['regimen_fiscal'])
+        self.set_xy(x_reg[1], 252)
+        self.cell(col_reg[1], 4, '')
+        self.set_xy(x_reg[2], 252)
+        self.cell(col_reg[2], 4, '')
+
+        # ============================================================
+        # 12. TEXTOS LEGALES
+        # ============================================================
+        self.set_font('Helvetica', '', 7.5)
+        texto_proteccion = (
+            "Sus datos personales son incorporados y protegidos en los sistemas del SAT, "
+            "con fundamento en los articulos 3, 16, 17, 18, 31 y demas relativos de la "
+            "Ley General de Proteccion de Datos Personales en Posesion de Sujetos Obligados."
         )
-        self.set_x(MARGEN_IZQ)
-        self.multi_cell(ANCHO_TEXTO, 3, texto_legal, align='J')
-        self.ln(2)
+        self.set_xy(MARGEN_IZQ, 265)
+        self.multi_cell(ANCHO_TEXTO, 3.5, texto_proteccion, align='J')
 
-        self.set_font('Helvetica', '', 7)
-        texto_anticorrupcion = (
-            "El SAT te invita a denunciar actos de corrupcion al telefono 55-8852-2222 o al correo "
-            "denuncias@sat.gob.mx. Tu denuncia es confidencial."
+        texto_corrupcion = (
+            'La corrupcion tiene consecuencias. Denuncia al telefono 55-8852-2222, '
+            'al correo denuncias@sat.gob.mx o en www.gob.mx/sfp'
         )
-        self.set_x(MARGEN_IZQ)
-        self.multi_cell(ANCHO_TEXTO, 3, texto_anticorrupcion, align='J')
-        self.ln(4)
+        self.set_xy(MARGEN_IZQ, 278)
+        self.multi_cell(ANCHO_TEXTO, 3.5, texto_corrupcion, align='J')
 
-        # CADENA DIGITAL
-        self.set_font('Helvetica', 'B', 8)
-        self.cell(ANCHO_TEXTO, 4, 'Cadena Original Sello:', new_x="LMARGIN", new_y="NEXT")
-        self.ln(1)
+        # ============================================================
+        # 13. CADENA DIGITAL Y SELLO DIGITAL
+        # ============================================================
+        self.set_font('Helvetica', 'B', 9)
+        self.set_xy(MARGEN_IZQ, 290)
+        self.cell(ANCHO_TEXTO, 4, 'Cadena Original Sello:')
 
-        self.set_font('Courier', '', 7)
-        cadena = self.datos['cadena_digital']
-        lineas_cadena = [cadena[i:i+80] for i in range(0, min(len(cadena), 240), 80)]
-        for linea in lineas_cadena:
-            self.set_x(MARGEN_IZQ)
-            self.cell(ANCHO_TEXTO, 3, linea, new_x="LMARGIN", new_y="NEXT")
-        self.ln(3)
+        self.set_font('Helvetica', '', 7.5)
+        cadena = self.datos.get('cadena_digital', '')
+        self.set_xy(MARGEN_IZQ, 294)
+        self.cell(ANCHO_TEXTO, 4, cadena[:90])
 
-        # SELLO DIGITAL
-        self.set_font('Helvetica', 'B', 8)
-        self.cell(ANCHO_TEXTO, 4, 'Sello Digital:', new_x="LMARGIN", new_y="NEXT")
-        self.ln(1)
+        self.set_font('Helvetica', 'B', 9)
+        self.set_xy(MARGEN_IZQ, 300)
+        self.cell(ANCHO_TEXTO, 4, 'Sello Digital:')
 
-        self.set_font('Courier', '', 7)
-        sello = self.datos['sello_digital']
-        lineas_sello = [sello[i:i+80] for i in range(0, len(sello), 80)]
-        for linea in lineas_sello:
-            self.set_x(MARGEN_IZQ)
-            self.cell(ANCHO_TEXTO, 3, linea, new_x="LMARGIN", new_y="NEXT")
-        self.ln(3)
+        self.set_font('Helvetica', '', 7.5)
+        sello = self.datos.get('sello_digital', '')
+        self.set_xy(MARGEN_IZQ, 304)
+        self.cell(ANCHO_TEXTO, 4, sello[:90])
 
-        # FOLIO
-        self.set_font('Courier', '', 7)
-        self.set_x(MARGEN_IZQ)
-        self.cell(ANCHO_TEXTO, 3, '200001088888800000031', new_x="LMARGIN", new_y="NEXT")
-        self.ln(5)
-
-        # QR
+        # ============================================================
+        # 14. CÓDIGO QR (ESQUINA INFERIOR DERECHA)
+        # ============================================================
         qr_img = io.BytesIO()
         img = qrcode.make(self.datos['url_qr'])
         img.save(qr_img, format='PNG')
         qr_img.seek(0)
 
-        self.image(qr_img, x=145, y=255, w=35)
-        self.set_xy(145, 291)
+        self.image(qr_img, x=155, y=265, w=30)
         self.set_font('Helvetica', '', 6)
-        self.cell(35, 3, 'Verifica tu constancia', align='C')
+        self.set_xy(155, 296)
+        self.cell(30, 3, 'Verifica tu constancia', align='C')
 
         return self.output()
 
