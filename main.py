@@ -335,16 +335,12 @@ def generar_regimen():
 
 
 def generar_cadena_digital(rfc, nombre, fecha_nac, idcif):
-    fecha_str = datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
+    fecha_str = datetime.now().strftime('%Y/%m/%d %H:%M:%S')
+    folio = ''.join(random.choices(string.digits, k=21))
     cadena = (
-        f"||{fecha_str}|"
-        f"SAT|"
-        f"ConstanciaSituacionFiscal|"
-        f"{rfc}|"
-        f"{nombre.upper()}|"
-        f"{fecha_nac.strftime('%Y-%m-%d')}|"
-        f"{idcif}|"
-        f"Mexico||"
+        f"||{fecha_str}|{rfc}|CONSTANCIA DE SITUACION FISCAL|"
+        f"{folio}|"
+        f"{''.join(random.choices(string.ascii_letters + string.digits + '+/=', k=64))}||"
     )
     return cadena
 
@@ -352,7 +348,9 @@ def generar_cadena_digital(rfc, nombre, fecha_nac, idcif):
 def generar_sello_digital(cadena_original):
     sha = hashlib.sha256(cadena_original.encode('utf-8')).digest()
     sello = base64.b64encode(sha).decode('utf-8')
-    return sello
+    # Extender para que se vea como un sello real (más largo)
+    sello_extendido = sello + ''.join(random.choices(string.ascii_letters + string.digits + '+/=', k=40)) + '='
+    return sello_extendido
 
 
 def generar_datos_completos(nombre_completo, fecha_nacimiento_str, estado, sexo='H'):
@@ -369,8 +367,22 @@ def generar_datos_completos(nombre_completo, fecha_nacimiento_str, estado, sexo=
     url_qr = f"https://siat.sat.gob.mx/app/qr/faces/pages/mobile/validadorqr.jsf?D1=10&D2=1&D3={idcif}_{rfc}"
     fecha_emision = datetime.now().strftime('%Y-%m-%d')
 
+    # Desglosar nombre para la plantilla
+    partes_nombre = nombre_completo.upper().split()
+    if len(partes_nombre) >= 3:
+        primer_apellido = partes_nombre[0]
+        segundo_apellido = partes_nombre[1]
+        nombres = ' '.join(partes_nombre[2:])
+    else:
+        primer_apellido = partes_nombre[0] if len(partes_nombre) > 0 else ''
+        segundo_apellido = partes_nombre[1] if len(partes_nombre) > 1 else ''
+        nombres = ' '.join(partes_nombre[2:]) if len(partes_nombre) > 2 else ''
+
     datos = {
         'nombre': nombre_completo.upper(),
+        'primer_apellido': primer_apellido,
+        'segundo_apellido': segundo_apellido,
+        'nombres': nombres,
         'fecha_nacimiento': fecha_nac.strftime('%d/%m/%Y'),
         'fecha_nacimiento_iso': fecha_nacimiento_str,
         'estado': estado,
