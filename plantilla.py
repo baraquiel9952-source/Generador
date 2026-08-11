@@ -8,19 +8,24 @@ class ConstanciaFiscalPDF(FPDF):
     """
     Plantilla de Constancia de Situación Fiscal del SAT.
     2 hojas tamaño Carta (216 x 279 mm).
-    Coordenadas basadas en mapeo exacto del PDF original.
+    Contenido desplazado 40 mm a la izquierda para centrado visual.
     """
 
     def __init__(self, datos):
         super().__init__('P', 'mm', 'Letter')
         self.datos = datos
         self.set_auto_page_break(auto=False, margin=0)
+        self.DESPLAZAMIENTO = -40  # 4 cm a la izquierda
+
+    def _x(self, x_original):
+        """Aplica el desplazamiento a la coordenada X."""
+        return max(10, x_original + self.DESPLAZAMIENTO)  # mínimo 10 mm del borde
 
     def _escribir(self, x, y, texto, negrita=False, tamanio=9, alineacion='L'):
         """Helper para escribir texto en coordenadas exactas."""
         estilo = 'B' if negrita else ''
         self.set_font('Helvetica', estilo, tamanio)
-        self.set_xy(x, y)
+        self.set_xy(self._x(x), y)
         self.cell(0, 4, texto, align=alineacion)
 
     def _pagina_1(self):
@@ -32,13 +37,13 @@ class ConstanciaFiscalPDF(FPDF):
 
         # CÉDULA DE IDENTIFICACIÓN FISCAL (centrado)
         self.set_font('Helvetica', 'B', 16)
-        self.set_xy(42.7, 20)
-        self.cell(130, 6, 'CÉDULA DE IDENTIFICACIÓN FISCAL', align='C')
+        self.set_xy(self._x(42.7), 20)
+        self.cell(170, 6, 'CÉDULA DE IDENTIFICACIÓN FISCAL', align='C')
 
         # CONSTANCIA DE SITUACIÓN FISCAL
         self.set_font('Helvetica', 'B', 14)
-        self.set_xy(42.7, 28)
-        self.cell(130, 6, 'CONSTANCIA DE SITUACIÓN FISCAL', align='C')
+        self.set_xy(self._x(42.7), 28)
+        self.cell(170, 6, 'CONSTANCIA DE SITUACIÓN FISCAL', align='C')
 
         # RFC en el encabezado
         self._escribir(42.7, 36, d['rfc'], tamanio=8, alineacion='C')
@@ -63,7 +68,7 @@ class ConstanciaFiscalPDF(FPDF):
         self._escribir(130, 68, lugar_fecha, tamanio=8)
 
         # RFC repetido esquina superior derecha
-        self._escribir(130, 36, d['rfc'], tamanio=8, alineacion='R')
+        self._escribir(160, 36, d['rfc'], tamanio=8, alineacion='R')
 
         # === DATOS DE IDENTIFICACIÓN DEL CONTRIBUYENTE ===
 
@@ -142,20 +147,20 @@ class ConstanciaFiscalPDF(FPDF):
 
         self.set_font('Helvetica', 'B', 8)
         for cab, x, w in zip(cabeceras_act, x_act, col_act):
-            self.set_xy(x, 30)
+            self.set_xy(self._x(x), 30)
             self.cell(w, 5, cab, border=1)
 
         # Datos de actividad
         self.set_font('Helvetica', '', 8)
-        self.set_xy(x_act[0], 36)
+        self.set_xy(self._x(x_act[0]), 36)
         self.cell(col_act[0], 5, d.get('actividad_orden', '1'), border=1)
-        self.set_xy(x_act[1], 36)
+        self.set_xy(self._x(x_act[1]), 36)
         self.cell(col_act[1], 5, d.get('actividad_economica', ''), border=1)
-        self.set_xy(x_act[2], 36)
+        self.set_xy(self._x(x_act[2]), 36)
         self.cell(col_act[2], 5, d.get('actividad_porcentaje', '100'), border=1)
-        self.set_xy(x_act[3], 36)
+        self.set_xy(self._x(x_act[3]), 36)
         self.cell(col_act[3], 5, d.get('actividad_fecha_inicio', '18/10/2016'), border=1)
-        self.set_xy(x_act[4], 36)
+        self.set_xy(self._x(x_act[4]), 36)
         self.cell(col_act[4], 5, d.get('actividad_fecha_fin', ''), border=1)
 
         # === REGÍMENES ===
@@ -169,24 +174,24 @@ class ConstanciaFiscalPDF(FPDF):
 
         self.set_font('Helvetica', 'B', 8)
         for cab, x, w in zip(cabeceras_reg, x_reg, col_reg):
-            self.set_xy(x, 65)
+            self.set_xy(self._x(x), 65)
             self.cell(w, 5, cab, border=1)
 
         # Datos de régimen (2 filas)
         self.set_font('Helvetica', '', 8)
         # Fila 1: nombre corto
-        self.set_xy(x_reg[0], 71)
+        self.set_xy(self._x(x_reg[0]), 71)
         self.cell(col_reg[0], 5, 'Asalariado', border=1)
-        self.set_xy(x_reg[1], 71)
+        self.set_xy(self._x(x_reg[1]), 71)
         self.cell(col_reg[1], 5, d.get('regimen_fecha_inicio', '18/10/2016'), border=1)
-        self.set_xy(x_reg[2], 71)
+        self.set_xy(self._x(x_reg[2]), 71)
         self.cell(col_reg[2], 5, d.get('regimen_fecha_fin', ''), border=1)
         # Fila 2: nombre largo
-        self.set_xy(x_reg[0], 77)
+        self.set_xy(self._x(x_reg[0]), 77)
         self.cell(col_reg[0], 5, d['regimen_fiscal'], border=1)
-        self.set_xy(x_reg[1], 77)
+        self.set_xy(self._x(x_reg[1]), 77)
         self.cell(col_reg[1], 5, '', border=1)
-        self.set_xy(x_reg[2], 77)
+        self.set_xy(self._x(x_reg[2]), 77)
         self.cell(col_reg[2], 5, '', border=1)
 
         # === AVISOS LEGALES ===
@@ -199,8 +204,8 @@ class ConstanciaFiscalPDF(FPDF):
         ]
 
         for x, y, texto in avisos:
-            self.set_xy(x, y)
-            self.multi_cell(130, 4, texto, align='J')
+            self.set_xy(self._x(x), y)
+            self.multi_cell(170, 4, texto, align='J')
 
         # === CADENA ORIGINAL Y SELLO DIGITAL ===
 
@@ -223,10 +228,10 @@ class ConstanciaFiscalPDF(FPDF):
         img.save(qr_img, format='PNG')
         qr_img.seek(0)
 
-        # QR en esquina inferior derecha
-        self.image(qr_img, x=150, y=210, w=35)
+        # QR en esquina inferior derecha (también desplazado)
+        self.image(qr_img, x=self._x(160), y=210, w=35)
         self.set_font('Helvetica', '', 5)
-        self.set_xy(150, 247)
+        self.set_xy(self._x(160), 247)
         self.cell(35, 3, 'Verifica tu constancia', align='C')
 
         # === PIE DE PÁGINA 2 ===
