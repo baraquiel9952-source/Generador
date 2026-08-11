@@ -16,7 +16,8 @@ CORS(app)
 def index():
     return jsonify({
         'servicio': 'API Generador de Constancia Fiscal Sintética',
-        'version': '1.0.0',
+        'version': '2.0.0',
+        'productor': 'FPDF 1.86',
         'endpoints': {
             'POST /api/generar': 'Genera datos sintéticos (JSON)',
             'POST /api/generar/pdf': 'Genera PDF de constancia (descarga)',
@@ -110,6 +111,7 @@ def api_generar_pdf():
         datos = generar_datos_completos(nombre, fecha, estado, sexo)
         pdf_bytes = generar_pdf_constancia(datos)
 
+        # CORREGIDO: El nombre del archivo usa el RFC real del PDF
         return send_file(
             io.BytesIO(pdf_bytes),
             mimetype='application/pdf',
@@ -179,6 +181,18 @@ def api_estados():
     return jsonify({
         'estados': estados,
         'total': len(estados)
+    })
+
+# ============================================================
+# ENDPOINT 5: HEALTH CHECK
+# ============================================================
+
+@app.route('/api/health', methods=['GET'])
+def api_health():
+    return jsonify({
+        'status': 'ok',
+        'servicio': 'Generador de Constancia Fiscal Sintética',
+        'version': '2.0.0'
     })
 
 # ============================================================
