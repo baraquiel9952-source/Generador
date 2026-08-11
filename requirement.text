@@ -1,0 +1,5 @@
+flask
+fpdf2
+qrcode[pil]
+Pillow
+gunicorn
