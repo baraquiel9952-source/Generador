@@ -14,9 +14,10 @@ class ConstanciaFiscalBase(FPDF):
         self.datos = datos
         self.set_auto_page_break(auto=False, margin=0)
         
-        # Rutas de las imágenes de fondo
-        self.ruta_pag1 = os.path.join(os.path.dirname(__file__), 'pagina_1.png')
-        self.ruta_pag2 = os.path.join(os.path.dirname(__file__), 'pagina_2.png')
+        # Usar os.getcwd() para Render (más confiable que __file__)
+        base_dir = os.getcwd()
+        self.ruta_pag1 = os.path.join(base_dir, 'pagina_1.png')
+        self.ruta_pag2 = os.path.join(base_dir, 'pagina_2.png')
 
     def _escribir(self, x_mm, y_mm, texto, negrita=False, tamanio_pt=8):
         """Escribe texto encima del fondo."""
@@ -28,19 +29,25 @@ class ConstanciaFiscalBase(FPDF):
         self.cell(0, (tamanio_pt * 0.3528) + 1, str(texto))
 
     def _pagina_1(self):
-        """Página 1: fondo + datos de identificación y domicilio."""
+        """Página 1: fondo + datos."""
         self.add_page()
         
-        # FONDO
+        # FONDO - Verificar que existe
         if os.path.exists(self.ruta_pag1):
             self.image(self.ruta_pag1, x=0, y=0, w=215.9, h=279.4)
+        else:
+            # Si no encuentra el PNG, al menos poner un texto de advertencia
+            self.set_font('Helvetica', 'B', 14)
+            self.set_xy(50, 130)
+            self.cell(0, 10, 'PLANTILLA NO ENCONTRADA - Verificar pagina_1.png')
+            self.set_font('Helvetica', '', 10)
+            self.set_xy(50, 145)
+            self.cell(0, 6, f'Buscando en: {self.ruta_pag1}')
         
         d = self.datos
         dom = d.get('domicilio', {})
 
-        # ============================================================
         # ENCABEZADO
-        # ============================================================
         self._escribir(67, 66, d['rfc'], tamanio_pt=9)
 
         # Nombre
@@ -67,24 +74,16 @@ class ConstanciaFiscalBase(FPDF):
         # RFC repetido
         self._escribir(145, 102, d['rfc'], tamanio_pt=9)
 
-        # ============================================================
         # TABLA DATOS DE IDENTIFICACIÓN
-        # ============================================================
         campos = [
-            ('rfc', 170),
-            ('curp', 195),
-            ('nombres', 220),
-            ('primer_apellido', 245),
-            ('segundo_apellido', 270),
-            ('fecha_inicio_operaciones', 295),
-            ('estatus', 295),
-            ('fecha_cambio_estado', 320),
-            ('nombre_comercial', 320),
+            ('rfc', 170), ('curp', 195), ('nombres', 220),
+            ('primer_apellido', 245), ('segundo_apellido', 270),
+            ('fecha_inicio_operaciones', 295), ('estatus', 295),
+            ('fecha_cambio_estado', 320), ('nombre_comercial', 320),
         ]
 
         valores = {
-            'rfc': d['rfc'],
-            'curp': d['curp'],
+            'rfc': d['rfc'], 'curp': d['curp'],
             'nombres': d.get('nombres', ''),
             'primer_apellido': d.get('primer_apellido', ''),
             'segundo_apellido': d.get('segundo_apellido', ''),
@@ -99,21 +98,12 @@ class ConstanciaFiscalBase(FPDF):
             if valor:
                 self._escribir(54, y, str(valor), tamanio_pt=8)
 
-        # ============================================================
         # TABLA DOMICILIO
-        # ============================================================
         dom_campos = [
-            ('codigo_postal', 405),
-            ('tipo_vialidad', 430),
-            ('calle', 455),
-            ('numero_exterior', 480),
-            ('numero_interior', 505),
-            ('colonia', 530),
-            ('localidad', 555),
-            ('municipio', 580),
-            ('estado', 605),
-            ('entre_calle', 630),
-            ('y_calle', 655),
+            ('codigo_postal', 405), ('tipo_vialidad', 430), ('calle', 455),
+            ('numero_exterior', 480), ('numero_interior', 505), ('colonia', 530),
+            ('localidad', 555), ('municipio', 580), ('estado', 605),
+            ('entre_calle', 630), ('y_calle', 655),
         ]
 
         dom_valores = {
@@ -136,7 +126,7 @@ class ConstanciaFiscalBase(FPDF):
                 self._escribir(54, y, str(valor), tamanio_pt=8)
 
     def _pagina_2(self):
-        """Página 2: fondo + actividades, régimen, cadenas."""
+        """Página 2: fondo + datos."""
         self.add_page()
         
         # FONDO
@@ -145,23 +135,17 @@ class ConstanciaFiscalBase(FPDF):
         
         d = self.datos
 
-        # ============================================================
-        # ACTIVIDADES ECONÓMICAS
-        # ============================================================
+        # ACTIVIDADES
         self._escribir(13, 56, d.get('actividad_orden', '1'), tamanio_pt=8)
         self._escribir(29, 56, d.get('actividad_economica', 'Asalariado'), tamanio_pt=8)
         self._escribir(131, 56, d.get('actividad_porcentaje', '100'), tamanio_pt=8)
         self._escribir(157, 56, d.get('actividad_fecha_inicio', '31/12/2010'), tamanio_pt=8)
 
-        # ============================================================
         # REGÍMENES
-        # ============================================================
-        self._escribir(13, 81, d.get('regimen_fiscal', 'Sueldos y Salarios e Ingresos Asimilados a Salarios'), tamanio_pt=8)
+        self._escribir(13, 81, d.get('regimen_fiscal', 'Sueldos y Salarios'), tamanio_pt=8)
         self._escribir(157, 81, d.get('regimen_fecha_inicio', '31/12/2010'), tamanio_pt=8)
 
-        # ============================================================
-        # CADENAS DIGITALES
-        # ============================================================
+        # CADENAS
         cadena = d.get('cadena_digital', '')
         if cadena:
             self._escribir(52, 133, cadena[:80], tamanio_pt=6)
@@ -179,8 +163,5 @@ class ConstanciaFiscalBase(FPDF):
 
 
 def generar_pdf_constancia(datos):
-    """
-    Recibe el diccionario de datos generados y devuelve los bytes del PDF.
-    """
     pdf = ConstanciaFiscalBase(datos)
     return pdf.construir()
