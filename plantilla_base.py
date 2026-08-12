@@ -6,7 +6,9 @@ import os
 
 class ConstanciaFiscalBase(FPDF):
     """
-    Usa imágenes PNG del PDF base como fondo y escribe los datos encima.
+    Plantilla base con fondo PNG.
+    Sin bordes ni líneas dibujadas (ya vienen en el PNG).
+    Tamaño de letra ×2.5.
     """
 
     def __init__(self, datos):
@@ -14,51 +16,47 @@ class ConstanciaFiscalBase(FPDF):
         self.datos = datos
         self.set_auto_page_break(auto=False, margin=0)
         
-        # Usar os.getcwd() para Render (más confiable que __file__)
         base_dir = os.getcwd()
         self.ruta_pag1 = os.path.join(base_dir, 'pagina_1.png')
         self.ruta_pag2 = os.path.join(base_dir, 'pagina_2.png')
 
-    def _escribir(self, x_mm, y_mm, texto, negrita=False, tamanio_pt=8):
-        """Escribe texto encima del fondo."""
+    def _escribir(self, x_mm, y_mm, texto, negrita=False, tamanio_pt=20, alineacion='L'):
+        """
+        Escribe texto encima del fondo.
+        tamanio_pt ya viene con ×2.5 aplicado.
+        """
         if not texto:
             return
         estilo = 'B' if negrita else ''
         self.set_font('Helvetica', estilo, tamanio_pt * 0.3528)
         self.set_xy(x_mm, y_mm)
-        self.cell(0, (tamanio_pt * 0.3528) + 1, str(texto))
+        self.cell(0, (tamanio_pt * 0.3528) + 2, str(texto), align=alineacion)
 
     def _pagina_1(self):
-        """Página 1: fondo + datos."""
         self.add_page()
         
-        # FONDO - Verificar que existe
+        # FONDO
         if os.path.exists(self.ruta_pag1):
             self.image(self.ruta_pag1, x=0, y=0, w=215.9, h=279.4)
-        else:
-            # Si no encuentra el PNG, al menos poner un texto de advertencia
-            self.set_font('Helvetica', 'B', 14)
-            self.set_xy(50, 130)
-            self.cell(0, 10, 'PLANTILLA NO ENCONTRADA - Verificar pagina_1.png')
-            self.set_font('Helvetica', '', 10)
-            self.set_xy(50, 145)
-            self.cell(0, 6, f'Buscando en: {self.ruta_pag1}')
         
         d = self.datos
         dom = d.get('domicilio', {})
 
-        # ENCABEZADO
-        self._escribir(67, 66, d['rfc'], tamanio_pt=9)
+        # ============================================================
+        # ENCABEZADO (tamaños ×2.5)
+        # ============================================================
+        # RFC encabezado: 9pt × 2.5 = 22.5 → 22pt
+        self._escribir(67, 66, d['rfc'], tamanio_pt=22)
 
-        # Nombre
+        # Nombre: 9pt × 2.5 = 22pt
         nombre_partes = d['nombre'].split()
         linea1 = ' '.join(nombre_partes[:3]) if len(nombre_partes) >= 3 else d['nombre']
         linea2 = ' '.join(nombre_partes[3:]) if len(nombre_partes) > 3 else ''
-        self._escribir(61, 79, linea1, tamanio_pt=9)
+        self._escribir(61, 79, linea1, tamanio_pt=22)
         if linea2:
-            self._escribir(72, 82, linea2, tamanio_pt=9)
+            self._escribir(72, 82, linea2, tamanio_pt=22)
 
-        # Fecha
+        # Fecha: 9pt × 2.5 = 22pt
         estado = dom.get('estado', 'CIUDAD DE MEXICO').upper()
         fecha = datetime.now().strftime('%d DE %B DE %Y').upper()
         meses = {'JANUARY':'ENERO','FEBRUARY':'FEBRERO','MARCH':'MARZO','APRIL':'ABRIL',
@@ -66,15 +64,17 @@ class ConstanciaFiscalBase(FPDF):
                  'SEPTEMBER':'SEPTIEMBRE','OCTOBER':'OCTUBRE','NOVEMBER':'NOVIEMBRE','DECEMBER':'DICIEMBRE'}
         for en, es in meses.items():
             fecha = fecha.replace(en, es)
-        self._escribir(117, 81, f"{estado} , {estado} A {fecha}", negrita=True, tamanio_pt=9)
+        self._escribir(117, 81, f"{estado} , {estado} A {fecha}", negrita=True, tamanio_pt=22)
 
-        # IDCIF
-        self._escribir(76, 94, d['idcif'], tamanio_pt=9)
+        # IDCIF: 9pt × 2.5 = 22pt
+        self._escribir(76, 94, d['idcif'], tamanio_pt=22)
 
-        # RFC repetido
-        self._escribir(145, 102, d['rfc'], tamanio_pt=9)
+        # RFC repetido: 9pt × 2.5 = 22pt
+        self._escribir(145, 102, d['rfc'], tamanio_pt=22)
 
-        # TABLA DATOS DE IDENTIFICACIÓN
+        # ============================================================
+        # TABLA DATOS DE IDENTIFICACIÓN (8pt × 2.5 = 20pt)
+        # ============================================================
         campos = [
             ('rfc', 170), ('curp', 195), ('nombres', 220),
             ('primer_apellido', 245), ('segundo_apellido', 270),
@@ -83,7 +83,8 @@ class ConstanciaFiscalBase(FPDF):
         ]
 
         valores = {
-            'rfc': d['rfc'], 'curp': d['curp'],
+            'rfc': d['rfc'],
+            'curp': d['curp'],
             'nombres': d.get('nombres', ''),
             'primer_apellido': d.get('primer_apellido', ''),
             'segundo_apellido': d.get('segundo_apellido', ''),
@@ -96,9 +97,11 @@ class ConstanciaFiscalBase(FPDF):
         for campo, y in campos:
             valor = valores.get(campo, '')
             if valor:
-                self._escribir(54, y, str(valor), tamanio_pt=8)
+                self._escribir(54, y, str(valor), tamanio_pt=20)
 
-        # TABLA DOMICILIO
+        # ============================================================
+        # TABLA DOMICILIO (8pt × 2.5 = 20pt)
+        # ============================================================
         dom_campos = [
             ('codigo_postal', 405), ('tipo_vialidad', 430), ('calle', 455),
             ('numero_exterior', 480), ('numero_interior', 505), ('colonia', 530),
@@ -123,10 +126,9 @@ class ConstanciaFiscalBase(FPDF):
         for campo, y in dom_campos:
             valor = dom_valores.get(campo, '')
             if valor:
-                self._escribir(54, y, str(valor), tamanio_pt=8)
+                self._escribir(54, y, str(valor), tamanio_pt=20)
 
     def _pagina_2(self):
-        """Página 2: fondo + datos."""
         self.add_page()
         
         # FONDO
@@ -135,26 +137,32 @@ class ConstanciaFiscalBase(FPDF):
         
         d = self.datos
 
-        # ACTIVIDADES
-        self._escribir(13, 56, d.get('actividad_orden', '1'), tamanio_pt=8)
-        self._escribir(29, 56, d.get('actividad_economica', 'Asalariado'), tamanio_pt=8)
-        self._escribir(131, 56, d.get('actividad_porcentaje', '100'), tamanio_pt=8)
-        self._escribir(157, 56, d.get('actividad_fecha_inicio', '31/12/2010'), tamanio_pt=8)
+        # ============================================================
+        # ACTIVIDADES ECONÓMICAS (8pt × 2.5 = 20pt)
+        # ============================================================
+        self._escribir(13, 56, d.get('actividad_orden', '1'), tamanio_pt=20)
+        self._escribir(29, 56, d.get('actividad_economica', 'Asalariado'), tamanio_pt=20)
+        self._escribir(131, 56, d.get('actividad_porcentaje', '100'), tamanio_pt=20)
+        self._escribir(157, 56, d.get('actividad_fecha_inicio', '31/12/2010'), tamanio_pt=20)
 
-        # REGÍMENES
-        self._escribir(13, 81, d.get('regimen_fiscal', 'Sueldos y Salarios'), tamanio_pt=8)
-        self._escribir(157, 81, d.get('regimen_fecha_inicio', '31/12/2010'), tamanio_pt=8)
+        # ============================================================
+        # REGÍMENES (8pt × 2.5 = 20pt)
+        # ============================================================
+        self._escribir(13, 81, d.get('regimen_fiscal', 'Sueldos y Salarios e Ingresos Asimilados a Salarios'), tamanio_pt=20)
+        self._escribir(157, 81, d.get('regimen_fecha_inicio', '31/12/2010'), tamanio_pt=20)
 
-        # CADENAS
+        # ============================================================
+        # CADENAS DIGITALES (6pt × 2.5 = 15pt)
+        # ============================================================
         cadena = d.get('cadena_digital', '')
         if cadena:
-            self._escribir(52, 133, cadena[:80], tamanio_pt=6)
-            self._escribir(52, 137, cadena[80:160] if len(cadena) > 80 else '', tamanio_pt=6)
+            self._escribir(52, 133, cadena[:80], tamanio_pt=15)
+            self._escribir(52, 137, cadena[80:160] if len(cadena) > 80 else '', tamanio_pt=15)
 
         sello = d.get('sello_digital', '')
         if sello:
-            self._escribir(52, 145, sello[:80], tamanio_pt=6)
-            self._escribir(52, 149, sello[80:160] if len(sello) > 80 else '', tamanio_pt=6)
+            self._escribir(52, 145, sello[:80], tamanio_pt=15)
+            self._escribir(52, 149, sello[80:160] if len(sello) > 80 else '', tamanio_pt=15)
 
     def construir(self):
         self._pagina_1()
