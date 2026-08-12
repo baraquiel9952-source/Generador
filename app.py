@@ -3,7 +3,7 @@ import os
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from main import generar_datos_completos
-from plantilla import generar_pdf_constancia
+from plantilla_base import generar_pdf_constancia
 
 app = Flask(__name__)
 CORS(app)
@@ -22,7 +22,8 @@ def index():
             'POST /api/generar': 'Genera datos sintéticos (JSON)',
             'POST /api/generar/pdf': 'Genera PDF de constancia (descarga)',
             'POST /api/generar/completo': 'Genera datos + PDF (JSON con base64)',
-            'GET /api/estados': 'Lista de estados disponibles'
+            'GET /api/estados': 'Lista de estados disponibles',
+            'GET /api/health': 'Health check'
         },
         'documentacion': {
             'ejemplo': {
@@ -111,7 +112,6 @@ def api_generar_pdf():
         datos = generar_datos_completos(nombre, fecha, estado, sexo)
         pdf_bytes = generar_pdf_constancia(datos)
 
-        # CORREGIDO: El nombre del archivo usa el RFC real del PDF
         return send_file(
             io.BytesIO(pdf_bytes),
             mimetype='application/pdf',
@@ -189,10 +189,18 @@ def api_estados():
 
 @app.route('/api/health', methods=['GET'])
 def api_health():
+    # Verificar que los PNG existen
+    png1 = os.path.exists(os.path.join(os.getcwd(), 'pagina_1.png'))
+    png2 = os.path.exists(os.path.join(os.getcwd(), 'pagina_2.png'))
+    
     return jsonify({
         'status': 'ok',
         'servicio': 'Generador de Constancia Fiscal Sintética',
-        'version': '2.0.0'
+        'version': '2.0.0',
+        'fondos': {
+            'pagina_1.png': png1,
+            'pagina_2.png': png2
+        }
     })
 
 # ============================================================
