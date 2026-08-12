@@ -7,8 +7,8 @@ import os
 class ConstanciaFiscalBase(FPDF):
     """
     Plantilla base con fondo PNG.
-    Tamaño ×3.75 (×2.5 ×1.5).
-    Datos página 1 desplazados 3cm (30mm) hacia arriba.
+    Tamaños reducidos 5mm.
+    Texto desplazado 7mm hacia abajo.
     """
 
     def __init__(self, datos):
@@ -20,57 +20,48 @@ class ConstanciaFiscalBase(FPDF):
         self.ruta_pag1 = os.path.join(base_dir, 'pagina_1.png')
         self.ruta_pag2 = os.path.join(base_dir, 'pagina_2.png')
         
-        # Factor px → mm
         self.f = 215.9 / 2448
-        # Desplazamiento página 1: 3cm = 30mm hacia arriba
-        self.desp_y_pag1 = 30  # mm
+        # Desplazamientos
+        self.desp_y_abajo = 7    # 7mm hacia abajo
+        self.reduccion = 5       # reducir 5mm del tamaño
 
     def _px(self, px):
         return px * self.f
 
-    def _escribir(self, x_px, y_px, texto, negrita=False, tamanio_pt=30, pag1=False):
-        """
-        Escribe texto en coordenadas px convertidas a mm.
-        Si pag1=True, aplica desplazamiento de 30mm hacia arriba.
-        """
+    def _escribir(self, x_px, y_px, texto, negrita=False, tamanio_pt=16, pag1=False):
         if not texto:
             return
         x_mm = self._px(x_px)
-        y_mm = self._px(y_px)
-        
-        if pag1:
-            y_mm -= self.desp_y_pag1  # Subir 3cm
+        y_mm = self._px(y_px) + self.desp_y_abajo  # Bajar 7mm
         
         estilo = 'B' if negrita else ''
-        self.set_font('Helvetica', estilo, tamanio_pt * 0.3528)
+        # Reducir 5mm del tamaño (convertir pt a mm y restar 5)
+        tamanio_mm = (tamanio_pt * 0.3528) - 5
+        if tamanio_mm < 2:
+            tamanio_mm = 2  # mínimo legible
+        
+        self.set_font('Helvetica', estilo, tamanio_mm)
         self.set_xy(x_mm, y_mm)
-        self.cell(0, (tamanio_pt * 0.3528) + 3, str(texto))
+        self.cell(0, tamanio_mm + 2, str(texto))
 
     def _pagina_1(self):
         self.add_page()
-        
-        # FONDO
         if os.path.exists(self.ruta_pag1):
             self.image(self.ruta_pag1, x=0, y=0, w=215.9, h=279.4)
         
         d = self.datos
         dom = d.get('domicilio', {})
 
-        # ============================================================
-        # ENCABEZADO (con desplazamiento -3cm)
-        # ============================================================
-        # RFC encabezado: original en (763, 749) → subir 3cm
-        self._escribir(763, 749, d['rfc'], tamanio_pt=33, pag1=True)
+        # ENCABEZADO (tamaño base - 5mm)
+        self._escribir(763, 749, d['rfc'], tamanio_pt=16)
 
-        # Nombre línea 1: original en (693, 894)
         nombre_partes = d['nombre'].split()
         linea1 = ' '.join(nombre_partes[:3]) if len(nombre_partes) >= 3 else d['nombre']
         linea2 = ' '.join(nombre_partes[3:]) if len(nombre_partes) > 3 else ''
-        self._escribir(693, 894, linea1, tamanio_pt=33, pag1=True)
+        self._escribir(693, 894, linea1, tamanio_pt=16)
         if linea2:
-            self._escribir(817, 928, linea2, tamanio_pt=33, pag1=True)
+            self._escribir(817, 928, linea2, tamanio_pt=16)
 
-        # Fecha emisión: original en (1331, 915)
         estado = dom.get('estado', 'CIUDAD DE MEXICO').upper()
         fecha = datetime.now().strftime('%d DE %B DE %Y').upper()
         meses = {'JANUARY':'ENERO','FEBRUARY':'FEBRERO','MARCH':'MARZO','APRIL':'ABRIL',
@@ -78,20 +69,14 @@ class ConstanciaFiscalBase(FPDF):
                  'SEPTEMBER':'SEPTIEMBRE','OCTOBER':'OCTUBRE','NOVEMBER':'NOVIEMBRE','DECEMBER':'DICIEMBRE'}
         for en, es in meses.items():
             fecha = fecha.replace(en, es)
-        self._escribir(1331, 915, f"{estado} , {estado} A {fecha}", negrita=True, tamanio_pt=33, pag1=True)
+        self._escribir(1331, 915, f"{estado} , {estado} A {fecha}", negrita=True, tamanio_pt=16)
 
-        # IDCIF: original en (1649, 1066)
-        self._escribir(1649, 1066, d['idcif'], tamanio_pt=33, pag1=True)
+        self._escribir(1649, 1066, d['idcif'], tamanio_pt=16)
+        self._escribir(1640, 1151, d['rfc'], tamanio_pt=16)
 
-        # RFC repetido: original en (1640, 1151)
-        self._escribir(1640, 1151, d['rfc'], tamanio_pt=33, pag1=True)
+        # TABLA DATOS DE IDENTIFICACIÓN
+        self._escribir(808, 1276, 'Datos de Identificación del Contribuyente:', negrita=True, tamanio_pt=16)
 
-        # ============================================================
-        # TABLA DATOS DE IDENTIFICACIÓN (con desplazamiento -3cm)
-        # ============================================================
-        self._escribir(808, 1276, 'Datos de Identificación del Contribuyente:', negrita=True, tamanio_pt=33, pag1=True)
-
-        # Valores (columna derecha, x≈942)
         valores_id = [
             (942, 1369, d['rfc']),
             (942, 1456, d['curp']),
@@ -105,14 +90,11 @@ class ConstanciaFiscalBase(FPDF):
         ]
         for x, y, valor in valores_id:
             if valor:
-                self._escribir(x, y, str(valor), tamanio_pt=30, pag1=True)
+                self._escribir(x, y, str(valor), tamanio_pt=14)
 
-        # ============================================================
-        # TABLA DOMICILIO (con desplazamiento -3cm)
-        # ============================================================
-        self._escribir(922, 2195, 'Datos del domicilio registrado', negrita=True, tamanio_pt=33, pag1=True)
+        # TABLA DOMICILIO
+        self._escribir(922, 2195, 'Datos del domicilio registrado', negrita=True, tamanio_pt=16)
 
-        # Columna IZQUIERDA
         dom_izq = [
             (172, 2288, 'Código Postal:', 'codigo_postal', 397),
             (172, 2376, 'Nombre de Vialidad:', 'calle', 490),
@@ -122,14 +104,13 @@ class ConstanciaFiscalBase(FPDF):
             (170, 2723, 'Y Calle:', 'y_calle', 397),
         ]
         for x, y, etiqueta, campo, x_val in dom_izq:
-            self._escribir(x, y, etiqueta, negrita=True, tamanio_pt=30, pag1=True)
+            self._escribir(x, y, etiqueta, negrita=True, tamanio_pt=12)
             val = dom.get(campo, '')
             if campo in ['calle', 'estado']:
                 val = val.upper()
             if val:
-                self._escribir(x_val, y, str(val), tamanio_pt=30, pag1=True)
+                self._escribir(x_val, y, str(val), tamanio_pt=14)
 
-        # Columna DERECHA
         dom_der = [
             (1247, 2288, 'Tipo de Vialidad:', 'tipo_vialidad', 1511),
             (1247, 2376, 'Número Exterior:', 'numero_exterior', 1522),
@@ -138,68 +119,56 @@ class ConstanciaFiscalBase(FPDF):
             (1247, 2637, 'Entre Calle:', 'entre_calle', 1442),
         ]
         for x, y, etiqueta, campo, x_val in dom_der:
-            self._escribir(x, y, etiqueta, negrita=True, tamanio_pt=30, pag1=True)
+            self._escribir(x, y, etiqueta, negrita=True, tamanio_pt=12)
             val = dom.get(campo, '')
             if campo == 'colonia':
                 val = val.upper()
             if campo == 'tipo_vialidad' and not val:
                 val = 'CALLE'
             if val:
-                self._escribir(x_val, y, str(val), tamanio_pt=30, pag1=True)
+                self._escribir(x_val, y, str(val), tamanio_pt=14)
 
     def _pagina_2(self):
         self.add_page()
-        
-        # FONDO
         if os.path.exists(self.ruta_pag2):
             self.image(self.ruta_pag2, x=0, y=0, w=215.9, h=279.4)
         
         d = self.datos
 
-        # ============================================================
-        # ACTIVIDADES ECONÓMICAS (sin desplazamiento)
-        # ============================================================
-        self._escribir(967, 501, 'Actividades Económicas:', negrita=True, tamanio_pt=33)
+        # ACTIVIDADES
+        self._escribir(967, 501, 'Actividades Económicas:', negrita=True, tamanio_pt=16)
+        self._escribir(180, 577, 'Orden', negrita=True, tamanio_pt=14)
+        self._escribir(705, 577, 'Actividad Económica', negrita=True, tamanio_pt=14)
+        self._escribir(1509, 577, 'Porcentaje', negrita=True, tamanio_pt=14)
+        self._escribir(1763, 577, 'Fecha Inicio', negrita=True, tamanio_pt=14)
+        self._escribir(2065, 577, 'Fecha Fin', negrita=True, tamanio_pt=14)
 
-        # Cabeceras
-        self._escribir(180, 577, 'Orden', negrita=True, tamanio_pt=30)
-        self._escribir(705, 577, 'Actividad Económica', negrita=True, tamanio_pt=30)
-        self._escribir(1509, 577, 'Porcentaje', negrita=True, tamanio_pt=30)
-        self._escribir(1763, 577, 'Fecha Inicio', negrita=True, tamanio_pt=30)
-        self._escribir(2065, 577, 'Fecha Fin', negrita=True, tamanio_pt=30)
+        self._escribir(150, 637, d.get('actividad_orden', '1'), tamanio_pt=14)
+        self._escribir(331, 637, d.get('actividad_economica', 'Asalariado'), tamanio_pt=14)
+        self._escribir(1487, 637, d.get('actividad_porcentaje', '100'), tamanio_pt=14)
+        self._escribir(1784, 656, d.get('actividad_fecha_inicio', '31/12/2010'), tamanio_pt=14)
 
-        # Datos
-        self._escribir(150, 637, d.get('actividad_orden', '1'), tamanio_pt=30)
-        self._escribir(331, 637, d.get('actividad_economica', 'Asalariado'), tamanio_pt=30)
-        self._escribir(1487, 637, d.get('actividad_porcentaje', '100'), tamanio_pt=30)
-        self._escribir(1784, 656, d.get('actividad_fecha_inicio', '31/12/2010'), tamanio_pt=30)
-
-        # ============================================================
         # REGÍMENES
-        # ============================================================
-        self._escribir(1090, 789, 'Regímenes:', negrita=True, tamanio_pt=33)
+        self._escribir(1090, 789, 'Regímenes:', negrita=True, tamanio_pt=16)
+        self._escribir(860, 865, 'Régimen', negrita=True, tamanio_pt=14)
+        self._escribir(1763, 865, 'Fecha Inicio', negrita=True, tamanio_pt=14)
+        self._escribir(2065, 865, 'Fecha Fin', negrita=True, tamanio_pt=14)
 
-        self._escribir(860, 865, 'Régimen', negrita=True, tamanio_pt=30)
-        self._escribir(1763, 865, 'Fecha Inicio', negrita=True, tamanio_pt=30)
-        self._escribir(2065, 865, 'Fecha Fin', negrita=True, tamanio_pt=30)
+        self._escribir(150, 923, d.get('regimen_fiscal', 'Sueldos y Salarios'), tamanio_pt=14)
+        self._escribir(1784, 940, d.get('regimen_fecha_inicio', '31/12/2010'), tamanio_pt=14)
 
-        self._escribir(150, 923, d.get('regimen_fiscal', 'Sueldos y Salarios e Ingresos Asimilados a Salarios'), tamanio_pt=30)
-        self._escribir(1784, 940, d.get('regimen_fecha_inicio', '31/12/2010'), tamanio_pt=30)
-
-        # ============================================================
-        # CADENAS DIGITALES
-        # ============================================================
-        self._escribir(191, 1508, 'Cadena Original Sello:', negrita=True, tamanio_pt=22)
+        # CADENAS
+        self._escribir(191, 1508, 'Cadena Original Sello:', negrita=True, tamanio_pt=12)
         cadena = d.get('cadena_digital', '')
         if cadena:
-            self._escribir(587, 1506, cadena[:80], tamanio_pt=22)
-            self._escribir(587, 1551, cadena[80:160] if len(cadena) > 80 else '', tamanio_pt=22)
+            self._escribir(587, 1506, cadena[:80], tamanio_pt=12)
+            self._escribir(587, 1551, cadena[80:160] if len(cadena) > 80 else '', tamanio_pt=12)
 
-        self._escribir(191, 1619, 'Sello Digital:', negrita=True, tamanio_pt=22)
+        self._escribir(191, 1619, 'Sello Digital:', negrita=True, tamanio_pt=12)
         sello = d.get('sello_digital', '')
         if sello:
-            self._escribir(587, 1642, sello[:80], tamanio_pt=22)
-            self._escribir(587, 1687, sello[80:160] if len(sello) > 80 else '', tamanio_pt=22)
+            self._escribir(587, 1642, sello[:80], tamanio_pt=12)
+            self._escribir(587, 1687, sello[80:160] if len(sello) > 80 else '', tamanio_pt=12)
 
     def construir(self):
         self._pagina_1()
